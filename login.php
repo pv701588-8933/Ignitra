@@ -1,4 +1,5 @@
 <?php
+
 session_start();
 require_once "config/database.php";
 
@@ -37,7 +38,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION["email"] = $user["email"];
                 $_SESSION["role"] = $user["role"];
 
-                header("Location: dashboard.php");
+
+                /*
+                 * Redirect user according to their role
+                 */
+
+                if ($user["role"] === "admin") {
+
+                    header("Location: admin/dashboard.php");
+
+                } elseif ($user["role"] === "volunteer") {
+
+                    header("Location: volunteer/dashboard.php");
+
+                } else {
+
+                    header("Location: dashboard.php");
+
+                }
+
                 exit;
 
             } else {
@@ -51,6 +70,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
 }
+
 ?>
 
 <!DOCTYPE html>
