@@ -1,15 +1,18 @@
 <?php
 session_start();
-require_once "config/database.php";
 
-if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php");
-    exit;
+require_once "../../config/database.php";
+
+// Student must be logged in
+if (!isset($_SESSION["user_id"]) || $_SESSION["user_role"] !== "student") {
+    header("Location: student_login.php");
+    exit();
 }
 
 $message = "";
+$message_type = "";
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $user_id = $_SESSION["user_id"];
     $category = trim($_POST["category"]);
@@ -18,12 +21,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (empty($category) || empty($related_module) || empty($description)) {
 
-        $message = "Please fill all fields.";
+        $message = "Please fill in all fields.";
+        $message_type = "error";
 
     } else {
 
-        // Generate complaint ID
-        $complaint_id = "IGN-CMP-" . strtoupper(substr(uniqid(), -6));
+        // Generate unique complaint ID
+        $complaint_id = "IGN-CMP-" . strtoupper(bin2hex(random_bytes(3)));
 
         $status = "submitted";
 
@@ -45,17 +49,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         if ($stmt->execute()) {
 
-            header(
-                "Location: complaint_track.php?id=" .
-                urlencode($complaint_id)
-            );
-
-            exit;
+            $message = "Complaint submitted successfully. Your Complaint ID is " . $complaint_id;
+            $message_type = "success";
 
         } else {
 
-            $message = "Something went wrong. Please try again.";
+            $message = "Unable to submit complaint. Please try again.";
+            $message_type = "error";
         }
+
+        $stmt->close();
     }
 }
 ?>
@@ -66,162 +69,307 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
 
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Register Complaint | Ignitra</title>
+    <title>Register Complaint | IGNITRA</title>
 
-    <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7efe3;
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: #333;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 700px;
+            margin: auto;
+        }
+
+        .box {
+            background: #fff;
+            padding: 35px;
+            border-radius: 14px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .logo img {
+            width: 140px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #c65f21;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 28px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d8c8b7;
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: Arial, sans-serif;
+            outline: none;
+        }
+
+        select:focus,
+        textarea:focus {
+            border-color: #d87532;
+        }
+
+        textarea {
+            min-height: 170px;
+            resize: vertical;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 7px;
+            background: #d87532;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .submit-btn:hover {
+            background: #c66325;
+        }
+
+        .message {
+            padding: 13px;
+            border-radius: 7px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .success {
+            background: #edf5e8;
+            color: #4f6f35;
+        }
+
+        .error {
+            background: #fce8df;
+            color: #a43f16;
+        }
+
+        .links {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .links a {
+            color: #c65f21;
+            text-decoration: none;
+            font-size: 14px;
+            margin: 0 8px;
+        }
+
+        .links a:hover {
+            text-decoration: underline;
+        }
+
+    </style>
 
 </head>
 
 <body>
 
-<header class="navbar">
+<div class="container">
 
-    <div class="brand">
+    <div class="box">
 
-        <img src="images/ignitra-logo.jpg" alt="Ignitra Logo">
-
-        <div class="brand-text">
-
-            <strong>IGNITRA</strong>
-
-            <span>YOUTH COUNCIL</span>
-
+        <div class="logo">
+            <img src="../../assets/images/ingitra.png" alt="IGNITRA">
         </div>
-
-    </div>
-
-    <nav>
-
-        <a href="index.php">Home</a>
-
-        <a href="dashboard.php">Dashboard</a>
-
-        <a href="logout.php">Logout</a>
-
-    </nav>
-
-</header>
-
-
-<section class="section">
-
-    <div style="max-width: 650px; margin: 40px auto;">
-
-        <span class="section-label">SUPPORT</span>
 
         <h1>Register a Complaint</h1>
 
-        <p>
-            Tell us about the issue you are facing and our administration
-            team will review it.
+        <p class="subtitle">
+            Submit your complaint privately. Your complaint will be reviewed
+            by the IGNITRA administration team.
         </p>
-
 
         <?php if (!empty($message)): ?>
 
-            <p style="color:#b95105;">
+            <div class="message <?php echo $message_type; ?>">
                 <?php echo htmlspecialchars($message); ?>
-            </p>
+            </div>
 
         <?php endif; ?>
 
+        <form method="POST">
 
-        <form method="POST" class="card">
+            <div class="form-group">
 
-            <label>Complaint Category</label>
+                <label for="category">
+                    Complaint Category
+                </label>
 
-            <select
-                name="category"
-                required
-                style="width:100%; padding:12px; margin:8px 0 18px;"
-            >
+                <select id="category" name="category" required>
 
-                <option value="">Select category</option>
+                    <option value="">Select Category</option>
 
-                <option value="Account">Account</option>
+                    <option value="Technical Issue">
+                        Technical Issue
+                    </option>
 
-                <option value="Guidance">Guidance</option>
+                    <option value="Account">
+                        Account
+                    </option>
 
-                <option value="Volunteer">Volunteer</option>
+                    <option value="Volunteer">
+                        Volunteer
+                    </option>
 
-                <option value="Community">Community</option>
+                    <option value="Guidance">
+                        Guidance
+                    </option>
 
-                <option value="Technical Issue">Technical Issue</option>
+                    <option value="Roadmap">
+                        Roadmap
+                    </option>
 
-                <option value="Other">Other</option>
+                    <option value="Community">
+                        Community
+                    </option>
 
-            </select>
+                    <option value="Other">
+                        Other
+                    </option>
 
+                </select>
 
-            <label>Related Module</label>
-
-            <select
-                name="related_module"
-                required
-                style="width:100%; padding:12px; margin:8px 0 18px;"
-            >
-
-                <option value="">Select module</option>
-
-                <option value="Guidance Resources">
-                    Guidance Resources
-                </option>
-
-                <option value="Questions & Guidance">
-                    Questions & Guidance
-                </option>
-
-                <option value="Volunteers">
-                    Volunteers
-                </option>
-
-                <option value="Communities">
-                    Communities
-                </option>
-
-                <option value="Experiences">
-                    Experiences
-                </option>
-
-                <option value="Account">
-                    Account
-                </option>
-
-                <option value="Other">
-                    Other
-                </option>
-
-            </select>
+            </div>
 
 
-            <label>Describe your complaint</label>
+            <div class="form-group">
 
-            <textarea
-                name="description"
-                rows="6"
-                placeholder="Explain the issue clearly..."
-                required
-                style="width:100%; padding:12px; margin:8px 0 20px;"
-            ></textarea>
+                <label for="related_module">
+                    Related Module
+                </label>
+
+                <select id="related_module" name="related_module" required>
+
+                    <option value="">Select Module</option>
+
+                    <option value="Account">
+                        Account
+                    </option>
+
+                    <option value="Volunteers">
+                        Volunteers
+                    </option>
+
+                    <option value="Communities">
+                        Communities
+                    </option>
+
+                    <option value="Roadmaps">
+                        Roadmaps
+                    </option>
+
+                    <option value="Questions">
+                        Questions & Answers
+                    </option>
+
+                    <option value="Experiences">
+                        Experiences
+                    </option>
+
+                    <option value="Guidance">
+                        Guidance
+                    </option>
+
+                    <option value="Technical">
+                        Technical
+                    </option>
+
+                    <option value="Other">
+                        Other
+                    </option>
+
+                </select>
+
+            </div>
 
 
-            <button
-                type="submit"
-                class="login-btn"
-                style="border:none; cursor:pointer; padding:12px 24px;"
-            >
+            <div class="form-group">
+
+                <label for="description">
+                    Complaint Description
+                </label>
+
+                <textarea
+                    id="description"
+                    name="description"
+                    placeholder="Describe your complaint clearly..."
+                    required
+                ></textarea>
+
+            </div>
+
+
+            <button type="submit" class="submit-btn">
                 Submit Complaint
             </button>
 
         </form>
 
+
+        <div class="links">
+
+            <a href="complaint_track.php">
+                Track My Complaints
+            </a>
+
+            <a href="student_dashboard.php">
+                Back to Dashboard
+            </a>
+
+        </div>
+
     </div>
 
-</section>
+</div>
 
 </body>
-
 </html>

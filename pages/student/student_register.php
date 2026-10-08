@@ -1,19 +1,36 @@
 <?php
-require_once "config/database.php";
+require_once "../../config/database.php";
 
 $message = "";
+$message_type = "";
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $name = trim($_POST["name"]);
     $email = trim($_POST["email"]);
     $password = $_POST["password"];
+    $confirm_password = $_POST["confirm_password"];
 
-    if (empty($name) || empty($email) || empty($password)) {
-        $message = "Please fill all fields.";
-    } else {
+    // Basic validation
+    if (empty($name) || empty($email) || empty($password) || empty($confirm_password)) {
+        $message = "Please fill in all fields.";
+        $message_type = "error";
+    } 
+    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $message = "Please enter a valid email address.";
+        $message_type = "error";
+    } 
+    elseif ($password !== $confirm_password) {
+        $message = "Passwords do not match.";
+        $message_type = "error";
+    } 
+    elseif (strlen($password) < 6) {
+        $message = "Password must be at least 6 characters.";
+        $message_type = "error";
+    } 
+    else {
 
-        // Check whether email already exists
+        // Check if email already exists
         $check = $conn->prepare("SELECT id FROM users WHERE email = ?");
         $check->bind_param("s", $email);
         $check->execute();
@@ -21,146 +38,275 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         if ($result->num_rows > 0) {
             $message = "An account with this email already exists.";
-        } else {
+            $message_type = "error";
+        } 
+        else {
 
-            // Secure password
-            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            // Securely hash password
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-            // New users are students by default
+            // Student role is assigned automatically
             $role = "student";
 
             $stmt = $conn->prepare(
-                "INSERT INTO users (name, email, password, role)
-                 VALUES (?, ?, ?, ?)"
+                "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)"
             );
 
             $stmt->bind_param(
                 "ssss",
                 $name,
                 $email,
-                $hashedPassword,
+                $hashed_password,
                 $role
             );
 
             if ($stmt->execute()) {
-                header("Location: login.php?registered=1");
-                exit;
-            } else {
+                header("Location: student_login.php?registered=1");
+                exit();
+            } 
+            else {
                 $message = "Registration failed. Please try again.";
+                $message_type = "error";
             }
+
+            $stmt->close();
         }
+
+        $check->close();
     }
 }
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Register | Ignitra</title>
+    <title>Student Registration | IGNITRA</title>
 
-    <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7efe3;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+        }
+
+        .register-container {
+            width: 100%;
+            max-width: 480px;
+            background: #ffffff;
+            padding: 35px;
+            border-radius: 14px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.10);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .logo img {
+            width: 150px;
+            max-width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #c65f21;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 17px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 13px;
+            border: 1px solid #d8c8b7;
+            border-radius: 7px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #d87532;
+        }
+
+        .register-btn {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 7px;
+            background: #d87532;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        .register-btn:hover {
+            background: #c66325;
+        }
+
+        .message {
+            padding: 11px;
+            border-radius: 6px;
+            margin-bottom: 18px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .error {
+            background: #fce8df;
+            color: #a43f16;
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .login-link a {
+            color: #c65f21;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+
+        .back-home {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .back-home a {
+            color: #666;
+            text-decoration: none;
+            font-size: 13px;
+        }
+
+        .back-home a:hover {
+            color: #c65f21;
+        }
+    </style>
 </head>
 
 <body>
 
-<header class="navbar">
+<div class="register-container">
 
-    <div class="brand">
-        <img src="images/ignitra-logo.jpg" alt="Ignitra Logo">
-
-        <div class="brand-text">
-            <strong>IGNITRA</strong>
-            <span>YOUTH COUNCIL</span>
-        </div>
+    <div class="logo">
+        <img src="../../assets/images/ingitra.png" alt="IGNITRA">
     </div>
 
-    <nav>
-        <a href="index.php">Home</a>
-        <a href="login.php">Login</a>
-    </nav>
+    <h1>Student Registration</h1>
 
-</header>
+    <p class="subtitle">
+        Create your IGNITRA student account
+    </p>
 
-
-<section class="section">
-
-    <div style="max-width: 500px; margin: 40px auto;">
-
-        <div class="section-heading">
-            <div>
-                <span class="section-label">JOIN IGNITRA</span>
-                <h2>Create Your Account</h2>
-            </div>
+    <?php if (!empty($message)): ?>
+        <div class="message <?php echo $message_type; ?>">
+            <?php echo htmlspecialchars($message); ?>
         </div>
+    <?php endif; ?>
 
-        <?php if (!empty($message)): ?>
+    <form method="POST" action="">
 
-            <p style="color: #b95105; margin-bottom: 20px;">
-                <?php echo htmlspecialchars($message); ?>
-            </p>
-
-        <?php endif; ?>
-
-
-        <form method="POST" class="card">
-
-            <label>Name</label>
-
+        <div class="form-group">
+            <label for="name">Full Name</label>
             <input
                 type="text"
+                id="name"
                 name="name"
-                placeholder="Enter your name"
+                placeholder="Enter your full name"
+                value="<?php echo isset($_POST['name']) ? htmlspecialchars($_POST['name']) : ''; ?>"
                 required
-                style="width:100%; padding:12px; margin:8px 0 18px;"
             >
+        </div>
 
-
-            <label>Email</label>
-
+        <div class="form-group">
+            <label for="email">Email Address</label>
             <input
                 type="email"
+                id="email"
                 name="email"
                 placeholder="Enter your email"
+                value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>"
                 required
-                style="width:100%; padding:12px; margin:8px 0 18px;"
             >
+        </div>
 
-
-            <label>Password</label>
-
+        <div class="form-group">
+            <label for="password">Password</label>
             <input
                 type="password"
+                id="password"
                 name="password"
                 placeholder="Create a password"
                 required
-                style="width:100%; padding:12px; margin:8px 0 18px;"
             >
+        </div>
 
-
-            <button
-                type="submit"
-                class="login-btn"
-                style="border:none; cursor:pointer; padding:12px 24px;"
+        <div class="form-group">
+            <label for="confirm_password">Confirm Password</label>
+            <input
+                type="password"
+                id="confirm_password"
+                name="confirm_password"
+                placeholder="Confirm your password"
+                required
             >
-                Create Account
-            </button>
+        </div>
 
-        </form>
+        <button type="submit" class="register-btn">
+            Create Account
+        </button>
 
+    </form>
 
-        <p style="margin-top:20px;">
-            Already have an account?
-            <a href="login.php">Login here</a>
-        </p>
-
+    <div class="login-link">
+        Already have an account?
+        <a href="student_login.php">Login here</a>
     </div>
 
-</section>
+    <div class="back-home">
+        <a href="../../index.php">← Back to IGNITRA Home</a>
+    </div>
 
+</div>
 
 </body>
 </html>

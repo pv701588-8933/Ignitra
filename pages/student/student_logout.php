@@ -1,12 +1,13 @@
 <?php
-
 session_start();
 
-session_unset();
+// Remove all session variables
+$_SESSION = [];
+
+// Destroy the session
 session_destroy();
 
-header("Location: login.php");
-
-exit;
-
+// Redirect to student login page
+header("Location: student_login.php");
+exit();
 ?>
